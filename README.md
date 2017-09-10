@@ -8,7 +8,11 @@
 - [Directory Structure](#structure)
 - [Code Variables](#variables)
 - [Kinematic Model](#model)
-- [Discussions](#discussion)
+- [Variable Optimization](#optimization)
+- [Polynomial Fitting and Preprocessing](#fitting)
+- [Cost Function](#cost)
+- [Latency Calculation](#latency)
+- [Discussions](#discussions)
 
 
 ## Objective: <a name="objective"></a>
@@ -21,7 +25,7 @@ Due to the size limitation of github only small size of the video is part of the
 
 ![](videos/mpc.gif)
 
-Entire vidoe capture is uploaded to youtube link: [Full Video](https://www.youtube.com/watch?v=YZcmExkdCZw&feature=youtu.be)
+Entire video capture is uploaded to youtube link: [Full Video](https://www.youtube.com/watch?v=YZcmExkdCZw&feature=youtu.be)
 
 
 ## How to run: <a name="howto"></a>
@@ -148,10 +152,87 @@ py_desired = f(px)
 psi_desired = atan(f`(px))
 where f is the road curve function
       f` is the derivative of f
+      
+## Variable Optimization <name="optimization"></a>
 
+**Timestep Length (N):** Having bigger number for N it increase computation for predicting future states and also it makes it slower. I noticed that having larger values cause the car off the track. I tried values between 10 and 20 and 10 provided the best result.
+
+**Duration (dt):** This is the time delta between each feature state calculation if this value picked smaller it will require more computations. I tried values between 0.01 and 0.1 seconds keeping the N constant and 0.1 has the optimal result. 
+
+**N*dt**: Multiplication of N and dt will give future state predictions and among N between 10 and 20 and dt between 0,01 and 0.1. Multiplication of 10 and 0.1 gave the best result. 
+
+## Polynomial Fitting and Preprocessing<a name="fitting"></a>
+
+px and py points are rotated 90 degree to match with the car's orientation in the simulator. After that it is transfomed into Eigen Vector space. To make future state prediction ptsx and ptsy points are fitted into third degree polinomial and the equations is adjusted based on the new location. 
+
+Using helper functions cte and epsi can be calculated easily (after rotation:px=0,py=0,v=0). 
+
+	   // Rotate the car to make things simpler
+          for (unsigned int i=0;i<ptsx.size();++i){
+        	  dx = ptsx[i] - px;
+        	  dy = ptsy[i] - py;
+        	  ptsx[i] = dx*cos(-psi) - dy*sin(-psi);
+        	  ptsy[i] = dx*sin(-psi) + dy*cos(-psi);
+          }
+
+          // Transfer vectors into Eigen Vector format
+          double *ptrx = &ptsx[0];
+          Eigen::Map<Eigen::VectorXd> ptsx_map(ptrx,6);
+
+          double *ptry = &ptsy[0];
+          Eigen::Map<Eigen::VectorXd> ptsy_map(ptry,6);
+
+          // Fit waypoints into a polynomial function
+          auto coeffs = polyfit(ptsx_map, ptsy_map, 3);
+          // Calculate the cross track error
+          double cte = polyeval(coeffs, 0) ;
+          // Calculate the orientation error
+          double epsi = - atan(coeffs[1]);
+          
+
+## Cost Function <a name="cost"></a>
+
+The cost function is named as fg and its 0^th ^ index is where all the computation results are added. The car's behavior in the simulator determined by the cost function value. Some of the parameters are penalized and wights for those paramters shown below. 
+	
+	// Weight declaration
+	const double w_cte = 10000;
+	const double w_epsi = 10000;
+	const double w_delta = 5;
+	const double w_a = 5;
+	const double w_diff_delta = 20000;
+
+	  // The part of the cost based on the reference state
+	  for (int t = 0; t < N; t++) {
+	    fg[0] += w_cte*CppAD::pow(vars[cte_start + t] - ref_cte, 2);
+	    fg[0] += w_epsi*CppAD::pow(vars[epsi_start + t] -ref_espi, 2);
+	    fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
+	  }
+
+	  // Minimize change-rate
+	  for (int t = 0; t < N - 1; t++) {
+	    fg[0] += w_delta*CppAD::pow(vars[delta_start + t], 2);
+	    fg[0] += w_a*CppAD::pow(vars[a_start + t], 2);
+	  }
+	  // Minimize the value gap between sequential actuations.
+	  for (int t = 0; t < N - 2; t++) {
+	    fg[0] += w_diff_delta*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+	    fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+	  }
+
+## Latency Calculation <a name="latency"></a>
+
+To be more precise dt (100ms) latency value needs to be taken into account. Calculation of state and actuator parameters are shown below.  
+
+          // Predicting state with latency
+          px = 0.0 + v * dt;
+          py = 0.0;
+          psi = 0.0 + v * (-steering_angle) / Lf * dt;
+          v = v + throttle * dt;
+          cte = cte + v * sin(epsi) * dt;
+          epsi = epsi + v * (-steering_angle) / Lf * dt;
 
 ## Discussions <a name="discussions"></a>
 
-For improvements, time delta, number of steps, and parameters can be optimized. So it can reached to a maximum speed without off the track. 
+For improvements, time delta, number of steps, and parameters can be optimized. So it can reached to a maximum speed without getting off the track. 
 
 
