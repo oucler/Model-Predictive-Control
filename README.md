@@ -8,7 +8,7 @@
 - [Directory Structure](#structure)
 - [Code Variables](#variables)
 - [Kinematic Model](#model)
-- [Discussions](#discussion)
+- [Discussions](#discussions)
 
 
 ## Objective: <a name="objective"></a>
