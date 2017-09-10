@@ -8,7 +8,6 @@
 - [Directory Structure](#structure)
 - [Code Variables](#variables)
 - [Kinematic Model](#model)
-- [PID](#pid)
 - [Discussions](#discussion)
 
 
