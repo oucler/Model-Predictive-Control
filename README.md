@@ -153,7 +153,7 @@ psi_desired = atan(f`(px))
 where f is the road curve function
       f` is the derivative of f
       
-## Variable Optimization <name="optimization"></a>
+## Variable Optimization <a name="optimization"></a>
 
 **Timestep Length (N):** Having bigger number for N it increase computation for predicting future states and also it makes it slower. I noticed that having larger values cause the car off the track. I tried values between 10 and 20 and 10 provided the best result.
 
@@ -192,7 +192,7 @@ Using helper functions cte and epsi can be calculated easily (after rotation:px=
 
 ## Cost Function <a name="cost"></a>
 
-The cost function is named as fg and its 0^th ^ index is where all the computation results are added. The car's behavior in the simulator determined by the cost function value. Some of the parameters are penalized and wights for those paramters shown below. 
+The cost function is named as fg and its 0th  index is where all the computation results are added. The car's behavior in the simulator determined by the cost function value. Some of the parameters are penalized and wights for those paramters shown below. 
 	
 	// Weight declaration
 	const double w_cte = 10000;
